@@ -39,27 +39,25 @@ clippy::cargo,
 #![allow(clippy::inline_always)]
 #![allow(clippy::unwrap_in_result)]
 
+extern crate alloc;
+extern crate dirs_next;
 // section uses
 // extern crate quantii;
 extern crate std;
-extern crate alloc;
-extern crate dirs_next;
 
 use alloc::string::String;
 use alloc::string::ToString;
-use std::collections::HashMap;
-use std::vec::Vec;
 use std::{fs, io};
-use std::io::{Error, ErrorKind, stdin};
-use std::io::stdout;
+use std::collections::HashMap;
+use std::fs::ReadDir;
+use std::io::{Error, ErrorKind, stdin, stdout, Write};
+use std::iter::Map;
 use std::path::{Path, PathBuf};
 use std::print;
 use std::println;
-use std::vec;
-use std::fs::ReadDir;
-use std::io::Write;
-use std::iter::Map;
 use std::str::Lines;
+use std::vec;
+use std::vec::{Splice, Vec};
 
 // section struct Qiish
 
@@ -85,16 +83,13 @@ impl Qiish {
     ///
     /// returns: Qiish
     pub fn new(home_dir: &Path) -> io::Result<Self> {
-        let qiishenv_loc = match rewrite_relative_dir(
-            home_dir.join(".qiishenv"), home_dir.to_owned()) {
-            Ok(path) => path,
-            Err(_) => {
-                println!("Failed to instantiate Qiiish: no such file or directory: {}", home_dir.to_owned()
-                    .join(".qiishenv")
-                    .to_str()
-                    .unwrap());
-                return Err(Error::new(ErrorKind::Other, format!("No such directory {}", home_dir.to_str().unwrap())));
-            }
+        let qiishenv_loc = if let Ok(path) = rewrite_relative_dir(
+            home_dir.join(".qiishenv"), home_dir.to_owned()) { path } else {
+            println!("Failed to instantiate Qiiish: no such file or directory: {}", home_dir.to_owned()
+                .join(".qiishenv")
+                .to_str()
+                .unwrap());
+            return Err(Error::new(ErrorKind::Other, format!("No such directory {}", home_dir.to_str().unwrap())));
         };
 
 
@@ -173,10 +168,13 @@ impl Qiish {
                     environment: &HashMap<String, String>) -> (i16,
                                                                bool) {
         match command.0.as_str() {
+            "" => (0, false),
             "exit" => (0, true),
             "cd" => self.cd(command, environment),
             "ls" => self.ls(command, environment),
-            "clear" => self.clear(),
+            "clear" => Self::clear(),
+            "mkdir" => self.mkdir(command, environment),
+            "rmdir" => self.rm((command.0.clone(), command.1.clone().as_mut().splice(..0, vec!["-r"]))),
             _ => {
                 println!("Unrecognized command: {}", command.0);
                 (-1, false)
@@ -270,27 +268,6 @@ impl Qiish {
         };
     }
 
-    ///
-    ///
-    /// # Arguments
-    ///
-    /// * `path`: path to clean up
-    ///
-    /// returns: Result<PathBuf, Error>
-    fn rewrite_relative_dir(&mut self, path: PathBuf) -> io::Result<PathBuf> {
-        let tilde_path: PathBuf =
-            Path::new(&path.to_string_lossy()
-                .replace('~',
-                         self.homedir.
-                             canonicalize()?
-                             .to_str()
-                             .unwrap()))
-                .to_owned();
-        let canon_path: PathBuf = tilde_path.canonicalize()?;
-
-        Ok(canon_path)
-    }
-
     /// Convert an absolute path to one that references home directory ('~')
     ///
     /// # Arguments
@@ -311,12 +288,52 @@ impl Qiish {
             path.to_str().unwrap().to_owned()
         };
     }
-    fn clear(&mut self) -> (i16, bool) {
+    /// Clear the screen
+    fn clear() -> (i16, bool) {
         flush();
         print!("\x1B[2J\x1B[1;1H");
         flush();
 
         (0, false)
+    }
+
+    /// Create a new directory
+    ///
+    /// # Arguments
+    ///
+    /// * `command`:
+    /// * `environment`:
+    ///
+    /// returns: (i16, bool)
+    fn mkdir(&mut self, command: &(String, Vec<&str>), environment: &HashMap<String, String>) -> (i16, bool) {
+        return if command.1.is_empty() {
+            println!("mkdir: requires an argument");
+            (-1, false)
+        } else if command.1.len() > 1 {
+            println!("mkdir: requires exactly one argument");
+            (-1, false)
+        } else {
+            let path_pbuf: PathBuf;
+
+            if command.1[0].starts_with('/') {
+                path_pbuf = Path::new(command.1[0]).to_owned();
+            } else if command.1[0].starts_with('~') {
+                path_pbuf = self.homedir.join(command.1[0].split_once('~').unwrap().1);
+            } else {
+                path_pbuf = self.cwd.join(command.1[0]);
+            }
+
+            if path_pbuf.exists() {
+                println!("mkdir: path {} already exists", path_pbuf.to_str().unwrap());
+                (-1, false)
+            } else {
+                (0, false)
+            }
+        }
+    }
+
+    fn rm(&mut self, command: (String, Vec<&str>)) -> (i16, bool) {
+        todo!()
     }
 }
 
