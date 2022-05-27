@@ -39,25 +39,37 @@ clippy::cargo,
 #![allow(clippy::inline_always)]
 #![allow(clippy::unwrap_in_result)]
 
+// section crates
 extern crate alloc;
 extern crate dirs_next;
 // section uses
 // extern crate quantii;
 extern crate std;
 
+// section uses
+
+mod other_commands;
+use other_commands::rm::rm;
+
 use alloc::string::String;
 use alloc::string::ToString;
-use std::{fs, io};
-use std::collections::HashMap;
-use std::fs::ReadDir;
-use std::io::{Error, ErrorKind, stdin, stdout, Write};
-use std::iter::Map;
-use std::path::{Path, PathBuf};
-use std::print;
-use std::println;
-use std::str::Lines;
-use std::vec;
-use std::vec::{Splice, Vec};
+use std::{
+    fs,
+    io,
+    collections::HashMap,
+    fs::ReadDir,
+    io::{Error, ErrorKind, stdin, stdout, Write},
+    iter::Map,
+    path::{Path, PathBuf},
+    print,
+    println,
+    str::Lines,
+    vec,
+    vec::Vec
+};
+use std::fs::canonicalize;
+use std::path::Component;
+
 
 // section struct Qiish
 
@@ -83,8 +95,17 @@ impl Qiish {
     ///
     /// returns: Qiish
     pub fn new(home_dir: &Path) -> io::Result<Self> {
+
         let qiishenv_loc = if let Ok(path) = rewrite_relative_dir(
-            home_dir.join(".qiishenv"), home_dir.to_owned()) { path } else {
+            home_dir.join(".qiishenv"),
+            home_dir,
+            &*rewrite_relative_dir(home_dir.to_owned(),
+                                 home_dir,
+                                 home_dir)
+                .unwrap()
+        ) {
+            path
+        } else {
             println!("Failed to instantiate Qiiish: no such file or directory: {}", home_dir.to_owned()
                 .join(".qiishenv")
                 .to_str()
@@ -93,7 +114,6 @@ impl Qiish {
         };
 
 
-        println!("{}", qiishenv_loc.to_str().unwrap());
 
         Ok(Self {
             qiishenv: qiishenv_loc,
@@ -142,7 +162,7 @@ impl Qiish {
             let exit_code: (
                 i16, // Exit code itself
                 bool // Whether or not the shell should exit
-            ) = self.call_command(&full_command, &env);
+            ) = self.call_command(&full_command, &env, self.cwd.clone().as_path());
 
             if exit_code.0 > 0 {
                 println!("\nProgram exited with error code {}", exit_code.0);
@@ -165,7 +185,7 @@ impl Qiish {
     ///
     /// returns: `(i16, bool)` (exit code, should exit)
     fn call_command(&mut self, command: &(String, Vec<&str>),
-                    environment: &HashMap<String, String>) -> (i16,
+                    environment: &HashMap<String, String>, cwd: &Path) -> (i16,
                                                                bool) {
         match command.0.as_str() {
             "" => (0, false),
@@ -174,7 +194,12 @@ impl Qiish {
             "ls" => self.ls(command, environment),
             "clear" => Self::clear(),
             "mkdir" => self.mkdir(command, environment),
-            "rmdir" => self.rm((command.0.clone(), command.1.clone().as_mut().splice(..0, vec!["-r"]))),
+            "rm" => rm(command.clone(), &self.homedir, cwd),
+            "rmdir" => {
+                rm((command.0.clone(), {
+                    let mut args = command.1.clone(); args.insert(0, "-r"); args
+                }), &self.homedir, cwd)
+            },
             _ => {
                 println!("Unrecognized command: {}", command.0);
                 (-1, false)
@@ -184,7 +209,6 @@ impl Qiish {
 
     // section builtins
 
-    //noinspection DuplicatedCode
     ///
     ///
     /// # Arguments
@@ -198,7 +222,7 @@ impl Qiish {
                                                      bool) {
         if command.1.is_empty() {
             let cwd_str = self.cwd.to_str().unwrap().to_owned();
-            let ret = self.call_command(&("ls".to_owned(), vec![cwd_str.as_str()]), environment);
+            let ret = self.call_command(&("ls".to_owned(), vec![cwd_str.as_str()]), environment, &*self.cwd.clone());
             return ret;
         }
 
@@ -230,7 +254,6 @@ impl Qiish {
         };
     }
 
-    //noinspection DuplicatedCode
     ///
     ///
     /// # Arguments
@@ -242,7 +265,7 @@ impl Qiish {
     fn cd(&mut self, command: &(String, Vec<&str>),
           environment: &HashMap<String, String>) -> (i16, bool) {
         if command.1.is_empty() {
-            return self.call_command(&("cd".to_owned(), vec!["~"]), environment);
+            return self.call_command(&("cd".to_owned(), vec!["~"]), environment, &*self.cwd.clone());
         }
 
         let path_pbuf: PathBuf;
@@ -305,7 +328,7 @@ impl Qiish {
     /// * `environment`:
     ///
     /// returns: (i16, bool)
-    fn mkdir(&mut self, command: &(String, Vec<&str>), environment: &HashMap<String, String>) -> (i16, bool) {
+    fn mkdir(&mut self, command: &(String, Vec<&str>), _environment: &HashMap<String, String>) -> (i16, bool) {
         return if command.1.is_empty() {
             println!("mkdir: requires an argument");
             (-1, false)
@@ -327,13 +350,13 @@ impl Qiish {
                 println!("mkdir: path {} already exists", path_pbuf.to_str().unwrap());
                 (-1, false)
             } else {
+                match fs::create_dir_all(path_pbuf.join(command.1[0])) {
+                    Ok(_) => (),
+                    Err(_) => println!("mkdir: Access denied"),
+                }
                 (0, false)
             }
         }
-    }
-
-    fn rm(&mut self, command: (String, Vec<&str>)) -> (i16, bool) {
-        todo!()
     }
 }
 
@@ -388,16 +411,16 @@ fn flush() {
 /// * `path`: path to clean up
 ///
 /// returns: Result<PathBuf, Error>
-pub fn rewrite_relative_dir(path: PathBuf, homedir: PathBuf) -> io::Result<PathBuf> {
-    let tilde_path: PathBuf =
-        Path::new(&path.to_string_lossy()
-            .replace('~',
-                     homedir.
-                         canonicalize()?
-                         .to_str()
-                         .unwrap()))
-            .to_owned();
-    let canon_path: PathBuf = tilde_path.canonicalize()?;
-
-    Ok(canon_path)
+///
+/// panics! if cwd contains `./`,
+/// causing infinite recursion
+/// Stack overflow
+pub fn rewrite_relative_dir(path: PathBuf, homedir: &Path, cwd: &Path) -> io::Result<PathBuf> {
+    let mut iter = path.components();
+    let abs_path = match iter.next() {
+        Some(Component::Normal(osstr)) if osstr == "~" => homedir.join(iter.collect::<PathBuf>()),
+        Some(Component::Normal(_) | Component::CurDir | Component::ParentDir) => cwd.join(path),
+        _ => path,
+    };
+    canonicalize(&*abs_path)
 }
