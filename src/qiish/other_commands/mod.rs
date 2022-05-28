@@ -5,5 +5,7 @@
 // with it. Otherwise, it just goes in the
 // `qiish.rs` file.
 
-/// RM command (remove)
+/// RM command (ReMove)
 pub mod rm;
+/// CAT commate (conCATenate)
+pub mod cat;

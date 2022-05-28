@@ -69,6 +69,7 @@ use std::{
 };
 use std::fs::canonicalize;
 use std::path::Component;
+use crate::qiish::other_commands::cat::cat;
 
 
 // section struct Qiish
@@ -200,6 +201,9 @@ impl Qiish {
                     let mut args = command.1.clone(); args.insert(0, "-r"); args
                 }), &self.homedir, cwd)
             },
+            "cat" => {
+                cat(command.clone(), &self.homedir, cwd)
+            }
             _ => {
                 println!("Unrecognized command: {}", command.0);
                 (-1, false)
