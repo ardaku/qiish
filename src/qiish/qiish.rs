@@ -22,13 +22,12 @@
 
 // section clippy
 #![warn(
-clippy::all,
-clippy::restriction,
-clippy::pedantic,
-clippy::nursery,
-clippy::cargo,
+    clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo
 )]
-
 #![allow(clippy::implicit_return)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::print_stdout)]
@@ -41,7 +40,7 @@ clippy::cargo,
 
 // section crates
 extern crate alloc;
-extern crate dirs_next;
+
 // section uses
 // extern crate quantii;
 extern crate std;
@@ -51,26 +50,24 @@ extern crate std;
 mod other_commands;
 use other_commands::rm::rm;
 
-use alloc::string::String;
-use alloc::string::ToString;
-use std::{
-    fs,
-    io,
-    collections::HashMap,
-    fs::ReadDir,
-    io::{Error, ErrorKind, stdin, stdout, Write},
-    iter::Map,
-    path::{Path, PathBuf},
-    print,
-    println,
-    str::Lines,
-    vec,
-    vec::Vec
-};
-use std::fs::canonicalize;
-use std::path::Component;
 use crate::qiish::other_commands::cat::cat;
+use alloc::{string::String, string::ToString};
+use qiish_argparse::ArgParser;
 
+use std::fs::{read_dir, DirEntry};
+
+use std::{
+    collections::HashMap,
+    fs,
+    fs::canonicalize,
+    io::{stdin, stdout, Error, ErrorKind, Result, Write},
+    iter::Map,
+    path::Component,
+    path::{Path, PathBuf},
+    print, println,
+    str::Lines,
+    vec::Vec,
+};
 
 // section struct Qiish
 
@@ -95,26 +92,23 @@ impl Qiish {
     /// * `homedir`: home directory to set '~' to
     ///
     /// returns: Qiish
-    pub fn new(home_dir: &Path) -> io::Result<Self> {
-
+    pub fn new(home_dir: &Path) -> Result<Self> {
         let qiishenv_loc = if let Ok(path) = rewrite_relative_dir(
             home_dir.join(".qiishenv"),
             home_dir,
-            &*rewrite_relative_dir(home_dir.to_owned(),
-                                 home_dir,
-                                 home_dir)
-                .unwrap()
+            &*rewrite_relative_dir(home_dir.to_owned(), home_dir, home_dir).unwrap(),
         ) {
             path
         } else {
-            println!("Failed to instantiate Qiiish: no such file or directory: {}", home_dir.to_owned()
-                .join(".qiishenv")
-                .to_str()
-                .unwrap());
-            return Err(Error::new(ErrorKind::Other, format!("No such directory {}", home_dir.to_str().unwrap())));
+            println!(
+                "Failed to instantiate Qiiish: no such file or directory: {}",
+                home_dir.to_owned().join(".qiishenv").to_str().unwrap()
+            );
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("No such directory {}", home_dir.to_str().unwrap()),
+            ));
         };
-
-
 
         Ok(Self {
             qiishenv: qiishenv_loc,
@@ -131,23 +125,26 @@ impl Qiish {
 
         let env = get_env(self);
 
-
         let computer_name: &str = match env.get("computername") {
             Some(name) => name,
-            None => "comp_name_unk"
+            None => "comp_name_unk",
         };
-
 
         let username: &str = match env.get("computername") {
             Some(name) => name,
-            None => "user_name_unk"
+            None => "user_name_unk",
         };
 
         flush();
 
-
         while !exit {
-            print!("{}#{}@{} {} % ", computer_name, username, entrance_code, self.simplify_display(self.cwd.clone()));
+            print!(
+                "{}#{}@{} {} % ",
+                computer_name,
+                username,
+                entrance_code,
+                self.simplify_display(self.cwd.clone())
+            );
             flush();
 
             let mut line: String = String::new();
@@ -155,14 +152,16 @@ impl Qiish {
 
             let command: (&str, &str) = match line.split_once(' ') {
                 Some((before, after)) => (before, after),
-                None => (line.as_str(), "")
+                None => (line.as_str(), ""),
             };
 
-
-            let full_command: (String, Vec<&str>) = (command.0.trim().to_owned(), command.1.split_whitespace().collect());
+            let full_command: (String, Vec<&str>) = (
+                command.0.trim().to_owned(),
+                command.1.split_whitespace().collect(),
+            );
             let exit_code: (
-                i16, // Exit code itself
-                bool // Whether or not the shell should exit
+                i16,  // Exit code itself
+                bool, // Whether or not the shell should exit
             ) = self.call_command(&full_command, &env, self.cwd.clone().as_path());
 
             if exit_code.0 > 0 {
@@ -185,77 +184,131 @@ impl Qiish {
     /// * `environment`: environment variables
     ///
     /// returns: `(i16, bool)` (exit code, should exit)
-    fn call_command(&mut self, command: &(String, Vec<&str>),
-                    environment: &HashMap<String, String>, cwd: &Path) -> (i16,
-                                                               bool) {
+    fn call_command(
+        &mut self,
+        command: &(String, Vec<&str>),
+        environment: &HashMap<String, String>,
+        cwd: &Path,
+    ) -> (i16, bool) {
         match command.0.as_str() {
             "" => (0, false),
+            "help" => Self::help(),
             "exit" => (0, true),
             "cd" => self.cd(command, environment),
-            "ls" => self.ls(command, environment),
+            "ls" => self.ls(command, environment, &self.homedir.clone()),
             "clear" => Self::clear(),
             "mkdir" => self.mkdir(command, environment),
-            "rm" => rm(command.clone(), &self.homedir, cwd),
-            "rmdir" => {
-                rm((command.0.clone(), {
-                    let mut args = command.1.clone(); args.insert(0, "-r"); args
-                }), &self.homedir, cwd)
-            },
-            "cat" => {
-                cat(command.clone(), &self.homedir, cwd)
-            }
+            "rm" => rm(command.clone(), &self.homedir.clone(), cwd),
+            "rmdir" => rm(
+                (command.0.clone(), {
+                    let mut args = command.1.clone();
+                    args.insert(0, "-r");
+                    args
+                }),
+                &self.homedir,
+                cwd,
+            ),
+            "cat" => cat(command.clone(), &self.homedir, cwd),
+            "echo" => self.echo(command.clone()),
+            "pwd" => self.pwd(command.clone(), environment),
+            // "touch" => touch(command.clone(), environment),
+            // "cp" => self.cp(command.clone(), environment),
+            // "mv" => self.mv(command.clone(), environment),
             _ => {
-                println!("Unrecognized command: {}", command.0);
-                (-1, false)
+                println!("qiish: Unrecognized command: {}", command.0);
+                println!("qiish: Run 'help' for a list of commands");
+                (0, false)
             }
         }
     }
 
     // section builtins
 
+    /// Prints directory contents
     ///
-    ///
-    /// # Arguments
-    ///
-    /// * `command`: full command `(String, Vec<&str>)`
-    /// * `environment`: environment variables
-    ///
-    /// returns: `(i16, bool)` (exit code, should exit)
-    fn ls(&mut self, command: &(String, Vec<&str>),
-          environment: &HashMap<String, String>) -> (i16,
-                                                     bool) {
-        if command.1.is_empty() {
-            let cwd_str = self.cwd.to_str().unwrap().to_owned();
-            let ret = self.call_command(&("ls".to_owned(), vec![cwd_str.as_str()]), environment, &*self.cwd.clone());
-            return ret;
-        }
+    fn ls(
+        &mut self,
+        command: &(String, Vec<&str>),
+        environment: &HashMap<String, String>,
+        homedir: &Path,
+    ) -> (i16, bool) {
+        let mut parser = ArgParser::new(command.1.join(" "));
+        parser.parse();
+        let files = parser.args;
+        let options = parser.flags;
 
-        let path_pbuf: PathBuf;
+        let mut out: String = String::new();
 
-        if command.1[0].starts_with('/') {
-            path_pbuf = Path::new(command.1[0]).to_owned();
-        } else if command.1[0].starts_with('~') {
-            path_pbuf = self.homedir.join(command.1[0].split_once('~').unwrap().1);
-        } else {
-            path_pbuf = self.cwd.join(command.1[0]);
-        }
+        let all: bool = options.contains(&"a".to_owned()) || options.contains(&"all".to_owned());
+        let color: bool = options.contains(&"color".to_owned());
+        let classify: bool =
+            options.contains(&"F".to_owned()) || options.contains(&"classify".to_owned());
+        let dirs_first: bool = options.contains(&"group-directories-first".to_owned());
+        let comma_separated: bool = options.contains(&"m".to_owned());
+        let dir_indicator: bool =
+            options.contains(&"p".to_owned()) || options.contains(&"indicator-style".to_owned());
 
-        return if path_pbuf.is_file() {
-            println!("ls: Cannot read file as directory: {}",
-                     path_pbuf.file_name()
-                         .unwrap()
-                         .to_str()
-                         .unwrap());
-            (-1, false)
-        } else {
-            let paths: ReadDir = fs::read_dir(path_pbuf).unwrap();
+        if files.is_empty() {
+            return self.ls(
+                &(command.0.clone(), {
+                    let mut newcommand = command.1.clone();
+                    newcommand.push(".");
+                    newcommand
+                }),
+                environment,
+                homedir,
+            );
+        } else if files.len() == 1 {
+            for file_str in files {
+                let file_vec: Vec<PathBuf> = read_dir(file_str)
+                    .unwrap()
+                    .map(Result::unwrap)
+                    .map(|x: DirEntry| PathBuf::from(x.file_name()))
+                    .collect();
 
-            for path_c in paths {
-                print!("{} ", path_c.unwrap().path().display());
+                let sorted: Vec<PathBuf> = sort_files_dirs(file_vec, dirs_first);
+
+                if all {
+                    if color {
+                        out.push_str("\x1b[34m");
+                    }
+                    out.push('.');
+                    if dir_indicator {
+                        out.push('/');
+                    }
+                    out.push_str("..");
+                    if dir_indicator {
+                        out.push('/');
+                    }
+                    if color {
+                        out.push_str("\x1b[0m");
+                    }
+                }
+
+                for file in sorted {
+                    println!("{}", file.to_str().unwrap());
+                    if file.is_dir() {
+                        if color {
+                            out.push_str("\x1b[34m");
+                        }
+                        out.push_str(file.to_str().unwrap());
+                        if dir_indicator {
+                            out.push('/');
+                        }
+                        if color {
+                            out.push_str("\x1b[0m");
+                        }
+                    } else {
+                        out.push_str(file.to_str().unwrap());
+                    }
+                }
             }
+        } else {
+        }
 
-            (0, false)
-        };
+        println!("{}", out);
+
+        (0, false)
     }
 
     ///
@@ -266,10 +319,17 @@ impl Qiish {
     /// * `environment`: environment variables
     ///
     /// returns: `(i16, bool)` (exit code, should exit)
-    fn cd(&mut self, command: &(String, Vec<&str>),
-          environment: &HashMap<String, String>) -> (i16, bool) {
+    fn cd(
+        &mut self,
+        command: &(String, Vec<&str>),
+        environment: &HashMap<String, String>,
+    ) -> (i16, bool) {
         if command.1.is_empty() {
-            return self.call_command(&("cd".to_owned(), vec!["~"]), environment, &*self.cwd.clone());
+            return self.call_command(
+                &("cd".to_owned(), vec!["~"]),
+                environment,
+                &*self.cwd.clone(),
+            );
         }
 
         let path_pbuf: PathBuf;
@@ -283,11 +343,10 @@ impl Qiish {
         }
 
         return if path_pbuf.is_file() {
-            println!("cd: Cannot change directory into a file: {}",
-                     path_pbuf.file_name()
-                         .unwrap()
-                         .to_str()
-                         .unwrap());
+            println!(
+                "cd: Cannot change directory into a file: {}",
+                path_pbuf.file_name().unwrap().to_str().unwrap()
+            );
             (-1, false)
         } else {
             self.cwd = path_pbuf;
@@ -306,8 +365,7 @@ impl Qiish {
         return if path.starts_with(self.homedir.clone()) {
             Path::new("~")
                 .to_owned()
-                .join(path.strip_prefix(
-                    self.homedir.clone()).unwrap())
+                .join(path.strip_prefix(self.homedir.clone()).unwrap())
                 .to_str()
                 .unwrap()
                 .to_owned()
@@ -315,6 +373,7 @@ impl Qiish {
             path.to_str().unwrap().to_owned()
         };
     }
+
     /// Clear the screen
     fn clear() -> (i16, bool) {
         flush();
@@ -332,7 +391,11 @@ impl Qiish {
     /// * `environment`:
     ///
     /// returns: (i16, bool)
-    fn mkdir(&mut self, command: &(String, Vec<&str>), _environment: &HashMap<String, String>) -> (i16, bool) {
+    fn mkdir(
+        &mut self,
+        command: &(String, Vec<&str>),
+        _environment: &HashMap<String, String>,
+    ) -> (i16, bool) {
         return if command.1.is_empty() {
             println!("mkdir: requires an argument");
             (-1, false)
@@ -360,10 +423,44 @@ impl Qiish {
                 }
                 (0, false)
             }
+        };
+    }
+
+    /// Print help message
+    fn help() -> (i16, bool) {
+        println!("QuantII SHell - Help\n\nAvailable commands:\n");
+        println!("\tcd <dir>\t\t\tChange directory");
+        println!("\tls [dir]\t\t\t\tList directory");
+        println!("\tclear\t\t\t\tClear the screen");
+        println!("\tmkdir <dir>\t\t\tMake a new directory");
+        println!("\trmdir <dir>\t\t\tRemove a directory");
+        println!("\trm <file> [files...]\t\t\tRemove a file");
+        println!("\tcat <file> [files...]\t\t\tPrint a file");
+        println!("\thelp\t\t\t\tDisplay this help");
+        println!("\texit\t\t\t\tExit QuantII SHell");
+        (0, false)
+    }
+
+    /// Print to standard output
+    fn echo(&self, command: (String, Vec<&str>)) -> (i16, bool) {
+        let mut output = String::new();
+
+        for arg in command.1 {
+            output.push_str(arg);
+            output.push(' ');
         }
+
+        println!("{}", output);
+
+        (0, false)
+    }
+
+    /// Print the working directory
+    fn pwd(&self, _command: (String, Vec<&str>), _env: &HashMap<String, String>) -> (i16, bool) {
+        println!("{}", self.cwd.to_str().unwrap());
+        (0, false)
     }
 }
-
 
 ///
 ///
@@ -377,24 +474,21 @@ fn get_env(qiish: &Qiish) -> HashMap<String, String> {
 
     println!("{}", qiish.qiishenv.to_str().unwrap());
 
-    let qiishenv_contents_raw: String =
-        match fs::read_to_string(&qiish.qiishenv) {
-            Ok(contents) => contents,
-            Err(_) => "Could not load /dev/home/.qiishenv".to_owned()
-        };
+    let qiishenv_contents_raw: String = match fs::read_to_string(&qiish.qiishenv) {
+        Ok(contents) => contents,
+        Err(_) => "Could not load /dev/home/.qiishenv".to_owned(),
+    };
 
     let qiishenv_contents: Map<Lines, fn(&_) -> String> = qiishenv_contents_raw
-        .lines().into_iter()
+        .lines()
+        .into_iter()
         .map(ToString::to_string);
 
     for line in qiishenv_contents {
         let key_val: (String, String) = line
             .split_once('=')
-            .map(|(k, v)| {
-                (k.to_owned(), v.to_owned())
-            })
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
             .unwrap();
-
 
         variables.insert(key_val.0, key_val.1);
     }
@@ -419,7 +513,7 @@ fn flush() {
 /// panics! if cwd contains `./`,
 /// causing infinite recursion
 /// Stack overflow
-pub fn rewrite_relative_dir(path: PathBuf, homedir: &Path, cwd: &Path) -> io::Result<PathBuf> {
+pub fn rewrite_relative_dir(path: PathBuf, homedir: &Path, cwd: &Path) -> Result<PathBuf> {
     let mut iter = path.components();
     let abs_path = match iter.next() {
         Some(Component::Normal(osstr)) if osstr == "~" => homedir.join(iter.collect::<PathBuf>()),
@@ -427,4 +521,25 @@ pub fn rewrite_relative_dir(path: PathBuf, homedir: &Path, cwd: &Path) -> io::Re
         _ => path,
     };
     canonicalize(&*abs_path)
+}
+
+/// Sort the given list of files by name
+#[must_use]
+pub fn sort_files_dirs(paths: Vec<PathBuf>, dir_first: bool) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    let mut dirs: Vec<PathBuf> = Vec::new();
+
+    for path in paths {
+        if path.is_dir() {
+            dirs.push(path);
+        } else {
+            files.push(path);
+        }
+    }
+
+    dirs.append(files.as_mut());
+    if !dir_first {
+        dirs.sort();
+    }
+    dirs
 }

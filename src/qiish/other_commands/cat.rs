@@ -1,11 +1,10 @@
 #![warn(
-clippy::all,
-clippy::restriction,
-clippy::pedantic,
-clippy::nursery,
-clippy::cargo,
+    clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo
 )]
-
 #![allow(clippy::implicit_return)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::print_stdout)]
@@ -16,10 +15,8 @@ clippy::cargo,
 #![allow(clippy::inline_always)]
 #![allow(clippy::unwrap_in_result)]
 
-
-use std::io::{Read, stdin};
+use std::io::{stdin, Read};
 use std::path::{Path, PathBuf};
-
 
 /// Data for CAT command
 struct DataCAT {
@@ -96,4 +93,7 @@ pub fn cat(command: (String, Vec<&str>), homedir: &Path, cwd: &Path) -> (i16, bo
     (result, false)
 }
 
-enum Input { File(PathBuf), Stdin }
+enum Input {
+    File(PathBuf),
+    Stdin,
+}
