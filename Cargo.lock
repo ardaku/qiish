@@ -7,9 +7,15 @@ name = "qiish"
 version = "0.1.0"
 dependencies = [
  "qiish-argparse",
+ "quantii-types",
 ]
 
 [[package]]
 name = "qiish-argparse"
 version = "0.1.0"
 source = "git+https://github.com/ardaku/qiish-argparse#7bb296b79f154bf50c7ffc47c7514ce849fbcbea"
+
+[[package]]
+name = "quantii-types"
+version = "0.1.0"
+source = "git+https://github.com/ardaku/quantii-types#72dea6a9b4a4307cb5b026dd42edef36a82ee468"

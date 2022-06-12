@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 qiish-argparse = { git="https://github.com/ardaku/qiish-argparse" }
+quantii-types = { git="https://github.com/ardaku/quantii-types" }

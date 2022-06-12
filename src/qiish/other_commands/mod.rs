@@ -7,5 +7,9 @@
 
 /// CAT command (conCATenate)
 pub mod cat;
+/// CP command (CoPy)
+pub mod cp;
+/// MV command (MoVe)
+pub mod mv;
 /// RM command (ReMove)
 pub mod rm;

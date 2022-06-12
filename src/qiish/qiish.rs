@@ -42,11 +42,9 @@
 extern crate alloc;
 
 // section uses
-// extern crate quantii;
 extern crate std;
 
 // section uses
-
 mod other_commands;
 use other_commands::rm::rm;
 
@@ -68,6 +66,7 @@ use std::{
     str::Lines,
     vec::Vec,
 };
+use crate::qiish::other_commands::cp::cp;
 
 // section struct Qiish
 
@@ -211,8 +210,7 @@ impl Qiish {
             "cat" => cat(command.clone(), &self.homedir, cwd),
             "echo" => self.echo(command.clone()),
             "pwd" => self.pwd(command.clone(), environment),
-            // "touch" => touch(command.clone(), environment),
-            // "cp" => self.cp(command.clone(), environment),
+            "cp" => cp(command.clone(), &self.homedir, cwd),
             // "mv" => self.mv(command.clone(), environment),
             _ => {
                 println!("qiish: Unrecognized command: {}", command.0);
