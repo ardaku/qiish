@@ -5,6 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "qiish"
+path = "src/main.rs"
+
+[lib]
+name = "qiish"
+path = "src/qiish/qiish.rs"
+
 [dependencies]
 qiish-argparse = { git="https://github.com/ardaku/qiish-argparse" }
 quantii-types = { git="https://github.com/ardaku/quantii-types" }
