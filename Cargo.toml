@@ -9,6 +9,15 @@ edition = "2021"
 name = "qiish"
 path = "src/main.rs"
 
+[[bin]]
+name = "qiish-quantii"
+path = "src/main.rs"
+# We must use different function here
+# because this is a different binary
+# specific for quantii
+fn = "main_quantii"
+rustc-args = ["--target=wasm32-wasi"]
+
 [lib]
 name = "qiish"
 path = "src/qiish/qiish.rs"

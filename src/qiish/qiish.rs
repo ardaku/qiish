@@ -46,9 +46,10 @@ extern crate std;
 
 // section uses
 mod other_commands;
+use other_commands::cat::cat;
+use other_commands::cp::cp;
 use other_commands::rm::rm;
 
-use crate::qiish::other_commands::cat::cat;
 use alloc::{string::String, string::ToString};
 use qiish_argparse::ArgParser;
 
@@ -66,7 +67,6 @@ use std::{
     str::Lines,
     vec::Vec,
 };
-use crate::qiish::other_commands::cp::cp;
 
 // section struct Qiish
 

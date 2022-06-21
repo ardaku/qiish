@@ -42,6 +42,7 @@
 #![allow(clippy::too_many_lines)]
 
 // section uses
+use super::super::rewrite_relative_dir;
 use qiish_argparse::ArgParser;
 use std::path::{Path, PathBuf};
 
@@ -105,11 +106,10 @@ pub fn cp(command: (String, Vec<&str>), homedir: &Path, cwd: &Path) -> (i16, boo
         result = -1;
     } else {
         for source_file in data.source.iter().map(|path: &PathBuf| {
-            crate::qiish::rewrite_relative_dir(path.clone(), homedir, cwd)
-                .unwrap_or_else(|_| path.clone())
+            rewrite_relative_dir(path.clone(), homedir, cwd).unwrap_or_else(|_| path.clone())
         }) {
             let destination_file: PathBuf =
-                crate::qiish::rewrite_relative_dir(data.destination.clone(), homedir, cwd)
+                rewrite_relative_dir(data.destination.clone(), homedir, cwd)
                     .unwrap_or_else(|_| data.destination.clone());
             if destination_file.is_dir() {
                 if !data.recursive {

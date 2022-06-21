@@ -16,7 +16,6 @@
 #![allow(clippy::inline_always)]
 #![allow(clippy::unwrap_in_result)]
 
-use crate::qiish::rewrite_relative_dir;
 use std::fs::remove_dir_all;
 use std::path::Path;
 #[allow(unused_imports)]
@@ -50,11 +49,14 @@ pub fn rm(command: (String, Vec<&str>), homedir: &Path, cwd: &Path) -> (i16, boo
 
     for file in rm_data.to_remove {
         #[allow(clippy::single_match_else)]
-        let file_path =
-            &*match rewrite_relative_dir(Path::new(&file).to_owned(), &*homedir, cwd.clone()) {
-                Ok(pathbuf) => pathbuf,
-                Err(_) => return (-1, false),
-            };
+        let file_path = &*match super::super::rewrite_relative_dir(
+            Path::new(&file).to_owned(),
+            &*homedir,
+            cwd.clone(),
+        ) {
+            Ok(pathbuf) => pathbuf,
+            Err(_) => return (-1, false),
+        };
 
         if !file_path.exists() {
             println!("rm: No such file or directory: {}", file);
