@@ -11,6 +11,8 @@ pub struct Options {
 }
 
 fn main() {
+    env_logger::init();
+
     let args = std::env::args();
     let args = args.collect::<Vec<String>>();
     let args = args.iter().skip(1).collect::<Vec<&String>>().clone();
@@ -55,9 +57,7 @@ fn parse_options(options: Vec<char>) -> Options {
 fn run(infile: &str, options: Options) -> i32 {
     let tokens = match lex::lex(infile, options) {
         (0, tok) => tok,
-        (exit_, _) => {
-            return exit_
-        }
+        (exit_, _) => return exit_,
     };
 
     println!("{:?}", tokens);
@@ -88,6 +88,6 @@ fn match_options(options: &str) -> Vec<char> {
     ret
 }
 
-fn help(){
+fn help() {
     eprintln!("Usage: qiish [OPTIONS] <file>");
 }
