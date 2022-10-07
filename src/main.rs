@@ -1,3 +1,4 @@
+use log::info;
 use std::process::exit;
 
 pub(crate) mod lex;
@@ -60,7 +61,7 @@ fn run(infile: &str, options: Options) -> i32 {
         (exit_, _) => return exit_,
     };
 
-    println!("{:?}", tokens);
+    info!("{:?}", tokens);
 
     // let parsed_tokens = match parse::parse(tokens, options) {
     //     (0, tok) => tok,
@@ -73,10 +74,6 @@ fn run(infile: &str, options: Options) -> i32 {
 
 fn match_options(options: &str) -> Vec<char> {
     let mut options = options.chars();
-    if options.next() != '-'.into() {
-        help();
-        exit(2);
-    }
     options.next();
 
     let mut ret = vec![];
@@ -84,10 +81,10 @@ fn match_options(options: &str) -> Vec<char> {
     for option in options {
         ret.push(option)
     }
-
     ret
 }
 
+#[inline]
 fn help() {
     eprintln!("Usage: qiish [OPTIONS] <file>");
 }
