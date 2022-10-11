@@ -1,7 +1,17 @@
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::cargo)]
+#![warn(clippy::suspicious)]
+
 use log::info;
 use std::process::exit;
 
+/// Lexes the input string into a vector of tokens.
 pub(crate) mod lex;
+/// Implements a Peekable-like trait so you can peek multiple items ahead
+pub(crate) mod lookahead;
+/// Parses the vector of tokens into a vector of parsed tokens.
 pub(crate) mod parse;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -63,12 +73,10 @@ fn run(infile: &str, options: Options) -> i32 {
 
     info!("{:?}", tokens);
 
-    // let parsed_tokens = match parse::parse(tokens, options) {
-    //     (0, tok) => tok,
-    //     (exit_, _) => {
-    //         return exit_
-    //     }
-    // };
+    let parsed_tokens = match parse::parse(tokens, options) {
+        (0, tok) => tok,
+        (exit_, _) => return exit_,
+    };
     0
 }
 
@@ -77,7 +85,6 @@ fn match_options(options: &str) -> Vec<char> {
     options.next();
 
     let mut ret = vec![];
-
     for option in options {
         ret.push(option)
     }

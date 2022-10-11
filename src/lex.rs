@@ -4,11 +4,11 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::suspicious)]
 
-use std::fs::File;
-use std::io::Read;
+use crate::Options;
 use log::info;
 use logos::Logos;
-use crate::Options;
+use std::fs::File;
+use std::io::Read;
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Logos)]
 pub enum Token {
@@ -54,7 +54,7 @@ pub enum Token {
 
 pub type Tokens = Vec<Token>;
 
-pub fn lex(input: &str, options: Options) -> (i32, Tokens) {
+pub fn lex(input: &str, _options: Options) -> (i32, Tokens) {
     let mut input = File::open(input).unwrap();
     let mut in_string = "".to_owned();
     input.read_to_string(&mut in_string).unwrap();
