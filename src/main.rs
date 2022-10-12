@@ -41,7 +41,6 @@ fn main() {
         }
 
         _ => {
-            help();
             exit(1);
         }
     }
@@ -86,12 +85,7 @@ fn match_options(options: &str) -> Vec<char> {
 
     let mut ret = vec![];
     for option in options {
-        ret.push(option)
+        ret.push(option);
     }
     ret
-}
-
-#[inline]
-fn help() {
-    eprintln!("Usage: qiish [OPTIONS] <file>");
 }

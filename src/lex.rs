@@ -47,8 +47,10 @@ pub enum Token {
     Eof,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Text(String),
+    #[regex(r"[ ]+")]
+    Space,
     #[error]
-    #[regex(r"[ \t\f\n]+", logos::skip)]
+    #[regex(r"[\t\f\n]+", logos::skip)]
     Error,
 }
 
