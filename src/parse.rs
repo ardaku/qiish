@@ -4,11 +4,10 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::suspicious)]
 
-
 use crate::{
     lex::{Token, Tokens},
     lookahead::Lookahead,
-    Options
+    Options,
 };
 use log::info;
 
@@ -27,6 +26,7 @@ pub enum ParsedToken {
     Eof,
     Error(String),
     String(String),
+    Delimiter,
 }
 
 pub type ParsedTokens = Vec<ParsedToken>;
@@ -56,7 +56,9 @@ pub fn parse(mut in_: Tokens, options: Options) -> (i32, ParsedTokens) {
             }
             // Currently, EoF token is not implemented
             Token::Eof => parsed_tokens.push(ParsedToken::Eof),
-            Token::Error => parsed_tokens.push(ParsedToken::Error("Error parsing token".to_string())),
+            Token::Error => {
+                parsed_tokens.push(ParsedToken::Error("Error parsing token".to_string()));
+            }
             Token::HereDoc => {
                 let mut here_doc = String::new();
                 let mut end_token = String::new();
@@ -83,10 +85,26 @@ pub fn parse(mut in_: Tokens, options: Options) -> (i32, ParsedTokens) {
                     token_stream.forward(end_token_len);
                     parsed_tokens.push(ParsedToken::HereDoc(parsed_tokens.len(), here_doc));
                 } else {
-                    parsed_tokens.push(ParsedToken::Error("HereDoc: End token not found".to_string()));
+                    parsed_tokens.push(ParsedToken::Error(
+                        "HereDoc: End token not found".to_string(),
+                    ));
                 }
             }
-            Token::HereString => {}
+            Token::HereString => {
+                let here_string;
+
+                token_stream.forward(1);
+                if let Some(Token::Text(s)) = token_stream.current() {
+                    here_string = s.clone();
+                } else {
+                    parsed_tokens.push(ParsedToken::Error(
+                        "HereString: No string found".to_string(),
+                    ));
+                    continue;
+                }
+
+                parsed_tokens.push(ParsedToken::HereString(parsed_tokens.len(), here_string));
+            }
             Token::OrOr => {
                 let left = parsed_tokens.len() - 1;
                 let right = parsed_tokens.len() + 1;
@@ -142,12 +160,88 @@ pub fn parse(mut in_: Tokens, options: Options) -> (i32, ParsedTokens) {
                 }
             }
             Token::DQString(s) => {
-                token_stream.backward(1);
+                let mut s_chars = s.chars().peekable();
+                let mut new_s = String::new();
 
+                while let Some(c) = s_chars.next() {
+                    if c == '\\' {
+                        if let Some(next) = s_chars.peek() {
+                            match next {
+                                '$' => {
+                                    s_chars.next();
+                                    new_s.push('$');
+                                }
+                                '`' => {
+                                    s_chars.next();
+                                    new_s.push('`');
+                                }
+                                '"' => {
+                                    s_chars.next();
+                                    new_s.push('"');
+                                }
+                                '\\' => {
+                                    s_chars.next();
+                                    new_s.push('\\');
+                                }
+                                '!' => {
+                                    s_chars.next();
+                                    new_s.push_str("\\!");
+                                }
+                                _ => {
+                                    new_s.push('\\');
+                                    new_s.push(c);
+                                }
+                            }
+                        }
+                    }
+                    if c == '`' {
+                        new_s.push_str("\\`");
+                    } else if c == '$' {
+                        if let Some(next) = s_chars.peek() {
+                            if *next == '(' {
+                                s_chars.next();
+                                new_s.push_str("\\$(");
+                            } else if *next == '{' {
+                                s_chars.next();
+                                new_s.push_str("\\${");
+                            } else {
+                                new_s.push(c);
+                            }
+                        }
+                    }
+
+                    if let Some(ParsedToken::String(s)) = parsed_tokens.last_mut() {
+                        s.push(c);
+                    } else {
+                        parsed_tokens.push(ParsedToken::String(c.to_string()));
+                    }
+                }
             }
-            Token::SQString(s) => {}
-            Token::Text(s) => {}
-            Token::Space => {}
+            Token::SQString(s) => {
+                if let Some(ParsedToken::String(s1)) = parsed_tokens.last_mut() {
+                    s1.push_str(&s);
+                } else {
+                    parsed_tokens.push(ParsedToken::String(s));
+                }
+            }
+            Token::Text(s) => {
+                if let Some(ParsedToken::Command(s1, args)) = parsed_tokens.last_mut() {
+                    args.push(s.clone());
+                } else {
+                    parsed_tokens.push(ParsedToken::Command(s.clone(), vec![]));
+                }
+            }
+            Token::Space => {
+                #[allow(clippy::equatable_if_let)]
+                if let Some(ParsedToken::String(s)) = parsed_tokens.last_mut() {
+                    s.push(' ');
+                } else if let Some(ParsedToken::Delimiter) = parsed_tokens.last_mut() {
+                    continue;
+                } else if let Some(ParsedToken::Command(_, _)) = parsed_tokens.last_mut() {
+                    continue;
+                }
+                parsed_tokens.push(ParsedToken::Delimiter);
+            }
         }
     }
 
