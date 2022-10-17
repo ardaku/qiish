@@ -18,6 +18,8 @@ name = "qiish_shell"
 path = "src/shell.rs"
 required-features = ["qiish"]
 
+[features]
+qiish = []
 
 [dependencies]
 env_logger = "0.9"
