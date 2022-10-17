@@ -16,13 +16,8 @@ path = "src/main.rs"
 [[bin]]
 name = "qiish_shell"
 path = "src/shell.rs"
-required-features = ["qiish"]
-
-[features]
-qiish = []
 
 [dependencies]
 env_logger = "0.9"
 log = "0.4"
 logos = "0.12"
-qiish = { git = "https://github.com/ardaku/qiish", features = ["qiish"] }
