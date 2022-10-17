@@ -38,15 +38,16 @@ impl Shell {
             verbose: false,
         };
         let iter: IntoIter<String> = options.into_iter();
-        let raw_double_dash_options = iter.clone().skip_while(|x| !x.starts_with("--"))
-            .collect::<Vec<String>>();
-        let raw_single_dash_options = iter.clone().skip_while(|x| !x.starts_with('-'))
-            .collect::<Vec<String>>();
-        let ret_args = iter.skip_while(|x| x.starts_with('-'))
-            .collect::<Vec<String>>();
+
+        let raw_double_dash_options = iter.clone().filter(|x| x.starts_with("--")).collect::<Vec<String>>();
+        let raw_single_dash_options = iter.clone().filter(|x| x.starts_with('-')).collect::<Vec<String>>();
+        let raw_double_dash_options = raw_double_dash_options.iter().map(|x| x.trim_start_matches("--")).collect::<Vec<&str>>();
+        let raw_single_dash_options = raw_single_dash_options.iter().map(|x| x.trim_start_matches('-')).collect::<Vec<&str>>();
+
+        let ret_args = iter.filter(|x| !x.starts_with('-')).collect::<Vec<String>>();
 
         for op in raw_single_dash_options {
-            let op_chars = op.chars().skip(1).collect::<Vec<char>>();
+            let op_chars = op.chars().collect::<Vec<char>>();
             for c in op_chars {
                 match c {
                     'h' => ret_options.help = true,
@@ -60,17 +61,17 @@ impl Shell {
         }
 
         for op in raw_double_dash_options {
-            match op.as_str() {
-                "--help" => ret_options.help = true,
-                "--version" => ret_options.version = true,
-                "--verbose" => ret_options.verbose = true,
-                "--quiet" => ret_options.verbose = false,
+            match op {
+                "help" => ret_options.help = true,
+                "version" => ret_options.version = true,
+                "verbose" => ret_options.verbose = true,
+                "quiet" => ret_options.verbose = false,
                 "" => break,
                 _ => return Err(3),
             }
         }
 
-        if ret_args.len() == 0 {
+        if ret_args.is_empty() {
             ret_options.help = true;
         }
 
@@ -101,7 +102,8 @@ impl Shell {
 /// The main function for the shell.
 fn main() -> Result<(), i32> {
     let args = env::args().skip(1).collect::<Vec<String>>();
-    let (real_args, options) = Shell::parse_shell_options(args)?;;
+    let (real_args, options) = Shell::parse_shell_options(args)?;
+    println!("{:?}; {:?}", options, real_args);
     let shell = Shell::new(real_args, options);
     if shell.options.help {
         Shell::print_help();
