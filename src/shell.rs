@@ -1,22 +1,39 @@
 #![allow(dead_code)]
 
-
 use std::env;
+use std::path::PathBuf;
 use std::vec::IntoIter;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub struct Options {
-    pub help: bool,
-    pub version: bool,
-    pub verbose: bool,
-}
+
+/// Lex's the input string into a vector of tokens.
+#[path = "lex.rs"]
+pub mod lex;
+/// Implements a Peekable-like trait so you can peek multiple items ahead.
+#[path = "lookahead.rs"]
+pub mod lookahead;
+/// Parses the vector of tokens into a vector of parsed tokens.
+#[path = "parse.rs"]
+pub mod parse;
+/// Runs the shell.
+#[path = "run.rs"]
+pub mod run;
+/// The 'normal' main file.
+#[path = "main.rs"]
+pub mod main;
+
+// #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+// pub struct Options {
+//     pub help: bool,
+//     pub version: bool,
+//     pub verbose: bool,
+// }
+
+use main::Options;
 
 pub struct Shell {
     pub args: Vec<String>,
     pub options: Options,
 }
-
-
 
 impl Shell {
     #[must_use] pub const fn new(args: Vec<String>, options: Options) -> Self {
@@ -27,7 +44,43 @@ impl Shell {
     }
 
 
-    pub const fn run(&self) -> Result<(), i32> {
+    pub fn run(&self) -> Result<(), i32> {
+        let  mut should_exit: bool = false;
+
+        if self.options.help && self.options.version {
+            return Err(1);
+        }
+
+        if self.options.help {
+            Self::print_help();
+            should_exit = true;
+        } else if self.options.version {
+            Self::print_version();
+            should_exit = true;
+        }
+
+        while !should_exit {
+            let mut computer_name = whoami::hostname();
+            let user_name = whoami::username();
+            computer_name = computer_name.replace(".localdomain", "");
+            let cwd = env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"));
+
+            print!("{}@{} : {} $ ", user_name, computer_name, cwd.display());
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).unwrap();
+
+            match input.clone().trim() {
+                "exit" => {
+                    should_exit = true;
+                }
+                _ => {
+                    let (exit, tokens) = lex::lex(&input, self.options);
+                    let tokens = parse::parse(tokens, self.options);
+                    run::run(tokens);
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -71,7 +124,7 @@ impl Shell {
             }
         }
 
-        if ret_args.is_empty() {
+        if ret_args.is_empty() && !ret_options.help && !ret_options.version {
             ret_options.help = true;
         }
 
@@ -95,7 +148,15 @@ impl Shell {
         help.push_str("\x1b[1m  -V, --version\t\t\x1b[0m Print the version and exit.\n");
         help.push_str("\x1b[1m  -v, --verbose\t\t\x1b[0m Print debug information to stdout.\n");
         println!("{}", help);
+    }
 
+    /// Print the version, in beautiful colors.
+    pub fn print_version() {
+        let mut version = String::new();
+        version.push_str("\x1b[1m\x1b[32m");
+        version.push_str("qiish v0.1.0");
+        version.push_str("\x1b[0m");
+        println!("{}", version);
     }
 }
 
@@ -103,12 +164,7 @@ impl Shell {
 fn main() -> Result<(), i32> {
     let args = env::args().skip(1).collect::<Vec<String>>();
     let (real_args, options) = Shell::parse_shell_options(args)?;
-    println!("{:?}; {:?}", options, real_args);
     let shell = Shell::new(real_args, options);
-    if shell.options.help {
-        Shell::print_help();
-        return Ok(());
-    }
     shell.run()?;
     Ok(())
 }

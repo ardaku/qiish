@@ -1,5 +1,5 @@
 #![warn(clippy::all)]
-// #![warn(clippy::pedantic)]
+#![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
 #![warn(clippy::suspicious)]
@@ -15,6 +15,8 @@ pub(crate) mod lookahead;
 pub(crate) mod parse;
 /// The shell itself.
 pub(crate) mod shell;
+/// Runs the shell.
+pub(crate) mod run;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Options {
