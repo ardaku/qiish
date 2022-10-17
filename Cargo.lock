@@ -128,6 +128,17 @@ dependencies = [
  "env_logger",
  "log",
  "logos",
+ "qiish 0.1.0 (git+https://github.com/ardaku/qiish)",
+]
+
+[[package]]
+name = "qiish"
+version = "0.1.0"
+source = "git+https://github.com/ardaku/qiish#1adc231f7cc5539afb26216017b8e81e99c1dcf9"
+dependencies = [
+ "env_logger",
+ "log",
+ "logos",
 ]
 
 [[package]]

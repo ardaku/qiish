@@ -5,7 +5,22 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "qiish"
+path = "src/main.rs"
+
+[[bin]]
+name = "qiish"
+path = "src/main.rs"
+
+[[bin]]
+name = "qiish_shell"
+path = "src/shell.rs"
+required-features = ["qiish"]
+
+
 [dependencies]
 env_logger = "0.9"
 log = "0.4"
 logos = "0.12"
+qiish = { git = "https://github.com/ardaku/qiish", features = ["qiish"] }

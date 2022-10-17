@@ -7,12 +7,14 @@
 use log::info;
 use std::process::exit;
 
-/// Lexes the input string into a vector of tokens.
+/// Lex's the input string into a vector of tokens.
 pub(crate) mod lex;
-/// Implements a Peekable-like trait so you can peek multiple items ahead
+/// Implements a Peekable-like trait so you can peek multiple items ahead.
 pub(crate) mod lookahead;
 /// Parses the vector of tokens into a vector of parsed tokens.
 pub(crate) mod parse;
+/// The shell itself.
+pub(crate) mod shell;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Options {
@@ -89,3 +91,4 @@ fn match_options(options: &str) -> Vec<char> {
     }
     ret
 }
+
