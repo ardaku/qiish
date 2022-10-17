@@ -1,5 +1,5 @@
 #![warn(clippy::all)]
-#![warn(clippy::pedantic)]
+// #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
 #![warn(clippy::suspicious)]
