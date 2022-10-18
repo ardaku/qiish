@@ -1,7 +1,7 @@
+use crate::parse::{ParsedToken, ParsedTokens};
+use crate::Options;
 use std::io::Read;
 use std::path::Path;
-use crate::Options;
-use crate::parse::{ParsedToken, ParsedTokens};
 
 /// Executes the parsed tokens.
 pub fn run(tokens: ParsedTokens, options: Options) -> i32 {
@@ -36,19 +36,16 @@ fn run_command(command: &ParsedToken) -> i32 {
     }
 }
 
-fn execute_command(command: &Path, args: Vec<String>) -> i32{
-
-    // TEMPORARY
-    // TODO: Make this work for real
-    let mut child = unsafe {
-        std::process::Command::new(command)
-            .args(args)
-            .spawn()
-            .expect("Failed to execute command")
-    };
-
-    let exit_code = child.wait().unwrap();
-    exit_code.code().unwrap_or(1)
+/// Actually executes a command.
+fn execute_command(command: &Path, args: Vec<String>) -> i32 {
+    std::process::Command::new(command)
+        .args(args)
+        .spawn()
+        .expect("Failed to execute command")
+        .wait()
+        .expect("Failed to wait on child")
+        .code()
+        .unwrap_or(1)
 }
 
 /// Finds the command in the PATH.

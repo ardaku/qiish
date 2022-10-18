@@ -5,22 +5,21 @@ use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
 use std::vec::IntoIter;
 
-
 /// Lex's the input string into a vector of tokens.
 #[path = "lex.rs"]
 pub mod lex;
 /// Implements a Peekable-like trait so you can peek multiple items ahead.
 #[path = "lookahead.rs"]
 pub mod lookahead;
+/// Options for the shell.
+#[path = "options.rs"]
+pub mod options;
 /// Parses the vector of tokens into a vector of parsed tokens.
 #[path = "parse.rs"]
 pub mod parse;
 /// Runs the shell.
 #[path = "run.rs"]
 pub mod run;
-/// Options for the shell.
-#[path = "options.rs"]
-pub mod options;
 
 use options::Options;
 
@@ -30,16 +29,13 @@ pub struct Shell {
 }
 
 impl Shell {
-    #[must_use] pub const fn new(args: Vec<String>, options: Options) -> Self {
-        Self {
-            args,
-            options,
-        }
+    #[must_use]
+    pub const fn new(args: Vec<String>, options: Options) -> Self {
+        Self { args, options }
     }
 
-
     pub fn run(&self) -> Result<(), i32> {
-        let  mut should_exit: bool = false;
+        let mut should_exit: bool = false;
 
         if self.options.help && self.options.version {
             return Err(1);
@@ -74,7 +70,7 @@ impl Shell {
                     (0, parsed) => parsed,
                     (exit, _) => return Err(exit),
                 };
-                
+
                 match run::run(parsed, self.options) {
                     0 => (),
                     exit => return Err(exit),
@@ -93,12 +89,26 @@ impl Shell {
         };
         let iter: IntoIter<String> = options.into_iter();
 
-        let raw_double_dash_options = iter.clone().filter(|x| x.starts_with("--")).collect::<Vec<String>>();
-        let raw_single_dash_options = iter.clone().filter(|x| x.starts_with('-')).collect::<Vec<String>>();
-        let raw_double_dash_options = raw_double_dash_options.iter().map(|x| x.trim_start_matches("--")).collect::<Vec<&str>>();
-        let raw_single_dash_options = raw_single_dash_options.iter().map(|x| x.trim_start_matches('-')).collect::<Vec<&str>>();
+        let raw_double_dash_options = iter
+            .clone()
+            .filter(|x| x.starts_with("--"))
+            .collect::<Vec<String>>();
+        let raw_single_dash_options = iter
+            .clone()
+            .filter(|x| x.starts_with('-'))
+            .collect::<Vec<String>>();
+        let raw_double_dash_options = raw_double_dash_options
+            .iter()
+            .map(|x| x.trim_start_matches("--"))
+            .collect::<Vec<&str>>();
+        let raw_single_dash_options = raw_single_dash_options
+            .iter()
+            .map(|x| x.trim_start_matches('-'))
+            .collect::<Vec<&str>>();
 
-        let ret_args = iter.filter(|x| !x.starts_with('-')).collect::<Vec<String>>();
+        let ret_args = iter
+            .filter(|x| !x.starts_with('-'))
+            .collect::<Vec<String>>();
 
         for op in raw_single_dash_options {
             let op_chars = op.chars().collect::<Vec<char>>();

@@ -4,20 +4,20 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::suspicious)]
 
+use crate::options::Options;
 use log::info;
 use std::process::exit;
-use crate::options::Options;
 
 /// Lex's the input string into a vector of tokens.
 pub(crate) mod lex;
 /// Implements a Peekable-like trait so you can peek multiple items ahead.
 pub(crate) mod lookahead;
+/// Options for the shell.
+pub(crate) mod options;
 /// Parses the vector of tokens into a vector of parsed tokens.
 pub(crate) mod parse;
 /// Runs the shell.
 pub(crate) mod run;
-/// Options for the shell.
-pub(crate) mod options;
 
 fn main() {
     env_logger::init();
@@ -87,4 +87,3 @@ fn match_options(options: &str) -> Vec<char> {
     }
     ret
 }
-

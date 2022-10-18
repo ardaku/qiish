@@ -56,7 +56,8 @@ pub enum Token {
 
 pub type Tokens = Vec<Token>;
 
-#[must_use] pub fn lex(input: &str, _options: Options) -> (i32, Tokens) {
+#[must_use]
+pub fn lex(input: &str, _options: Options) -> (i32, Tokens) {
     let tokens = Token::lexer(input).collect();
     (0, tokens)
 }
