@@ -56,10 +56,7 @@ pub enum Token {
 
 pub type Tokens = Vec<Token>;
 
-pub fn lex(input: &str, _options: Options) -> (i32, Tokens) {
-    let mut input = File::open(input).unwrap();
-    let mut in_string = "".to_owned();
-    input.read_to_string(&mut in_string).unwrap();
-    let tokens = Token::lexer(&in_string).collect();
+#[must_use] pub fn lex(input: &str, _options: Options) -> (i32, Tokens) {
+    let tokens = Token::lexer(input).collect();
     (0, tokens)
 }

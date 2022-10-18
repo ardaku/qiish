@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::env;
+use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
 use std::vec::IntoIter;
 
@@ -17,18 +18,11 @@ pub mod parse;
 /// Runs the shell.
 #[path = "run.rs"]
 pub mod run;
-/// The 'normal' main file.
-#[path = "main.rs"]
-pub mod main;
+/// Options for the shell.
+#[path = "options.rs"]
+pub mod options;
 
-// #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-// pub struct Options {
-//     pub help: bool,
-//     pub version: bool,
-//     pub verbose: bool,
-// }
-
-use main::Options;
+use options::Options;
 
 pub struct Shell {
     pub args: Vec<String>,
@@ -66,17 +60,24 @@ impl Shell {
             let cwd = env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"));
 
             print!("{}@{} : {} $ ", user_name, computer_name, cwd.display());
+            stdout().flush().unwrap();
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).unwrap();
-
-            match input.clone().trim() {
-                "exit" => {
-                    should_exit = true;
-                }
-                _ => {
-                    let (exit, tokens) = lex::lex(&input, self.options);
-                    let tokens = parse::parse(tokens, self.options);
-                    run::run(tokens);
+            if input.clone().trim() == "exit" {
+                should_exit = true;
+            } else {
+                let tokens = match lex::lex(&input, self.options) {
+                    (0, tok) => tok,
+                    (exit, _) => return Err(exit),
+                };
+                let parsed = match parse::parse(tokens, self.options) {
+                    (0, parsed) => parsed,
+                    (exit, _) => return Err(exit),
+                };
+                
+                match run::run(parsed, self.options) {
+                    0 => (),
+                    exit => return Err(exit),
                 }
             }
         }

@@ -6,6 +6,7 @@
 
 use log::info;
 use std::process::exit;
+use crate::options::Options;
 
 /// Lex's the input string into a vector of tokens.
 pub(crate) mod lex;
@@ -13,17 +14,10 @@ pub(crate) mod lex;
 pub(crate) mod lookahead;
 /// Parses the vector of tokens into a vector of parsed tokens.
 pub(crate) mod parse;
-/// The shell itself.
-pub(crate) mod shell;
 /// Runs the shell.
 pub(crate) mod run;
-
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub struct Options {
-    pub help: bool,
-    pub version: bool,
-    pub verbose: bool,
-}
+/// Options for the shell.
+pub(crate) mod options;
 
 fn main() {
     env_logger::init();
