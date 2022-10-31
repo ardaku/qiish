@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
 use std::env;
-use std::io::{stdin, stdout, Write};
-use std::path::PathBuf;
+use std::io::{stdout, Write};
 use std::vec::IntoIter;
 
+/// All the commands
+pub mod commands;
 /// Lex's the input string into a vector of tokens.
 #[path = "lex.rs"]
 pub mod lex;

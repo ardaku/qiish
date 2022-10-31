@@ -33,6 +33,7 @@ pub type ParsedTokens = Vec<ParsedToken>;
 pub type TokenStream = Lookahead<Token>;
 
 #[allow(clippy::too_many_lines)]
+#[must_use]
 pub fn parse(mut in_: Tokens, options: Options) -> (i32, ParsedTokens) {
     let mut parsed_tokens: Vec<ParsedToken> = vec![];
     // Temporary until EOF token is implemented

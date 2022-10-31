@@ -19,6 +19,8 @@ pub(crate) mod parse;
 /// Runs the shell.
 pub(crate) mod run;
 
+pub mod commands;
+
 fn main() {
     env_logger::init();
 
